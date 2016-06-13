@@ -10,8 +10,10 @@ static const uint32_t GPSBaud = 4800;
 Adafruit_BNO055 bno = Adafruit_BNO055();
 TinyGPSPlus gps;
 
-int greenLED = 5;
+int greenLED = 12;
 int redLED = 6;
+int button = 8;
+int gpsReset = 11;
 
 int timer;
 
@@ -46,12 +48,26 @@ void setup()
   pinMode(redLED, OUTPUT);
   digitalWrite(redLED, HIGH);
   digitalWrite(greenLED, HIGH);
+
 }
 
 void loop()
 {
   while (Serial1.available() > 0)
     gps.encode(Serial1.read());
+
+  if (!digitalRead(button)) {
+    while (true) {
+      Serial1.write("$PSRF117,16*0B\r\n");
+      Serial.println("GPS is Shutdown...");
+      digitalWrite(redLED, HIGH);
+      digitalWrite(greenLED, LOW);
+      delay(100);
+      digitalWrite(redLED, LOW);
+      digitalWrite(greenLED, HIGH);
+      delay(100);
+    }
+  }
 
   if (gps.location.isUpdated() || (millis() - timer > 1000)) {
     digitalWrite(greenLED, HIGH);
