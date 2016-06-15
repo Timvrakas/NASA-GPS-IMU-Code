@@ -5,17 +5,19 @@
 #include <utility/imumaths.h>
 
 static const uint32_t GPSBaud = 4800;
-#define SAMPLERATE_DELAY (1000)
+static const uint32_t cycleDelay = 1000;
 
 Adafruit_BNO055 bno = Adafruit_BNO055();
 TinyGPSPlus gps;
 
-int greenLED = 12;
-int redLED = 6;
+int greenLED = 6;
+int redLED = 12;
 int button = 8;
 int gpsReset = 11;
 
 int timer;
+int gpsWatchdog;
+int gpsPacketCount = 0;
 
 void setup()
 {
@@ -42,6 +44,8 @@ void setup()
 
   bno.setExtCrystalUse(true);
   timer = millis();
+  gpsWatchdog = millis();
+
 
   Serial.println("Calibration status values: 0=uncalibrated, 3=fully calibrated");
   pinMode(greenLED, OUTPUT);
@@ -69,20 +73,26 @@ void loop()
     }
   }
 
-  if (gps.location.isUpdated() || (millis() - timer > 1000)) {
+  if (gps.location.isUpdated() || (millis() - timer > cycleDelay)) {
     digitalWrite(greenLED, HIGH);
     timer = millis();
     displayGPS();
     displayIMU();
     Serial.println();
     digitalWrite(greenLED, LOW);
-    delay(SAMPLERATE_DELAY);
+
+    if (millis() - gpsWatchdog > 5000) {
+      if (gps.charsProcessed() - gpsPacketCount < 10) {
+        Serial.println(F("No GPS detected: check wiring."));
+        digitalWrite(redLED,LOW);
+      } else {
+        digitalWrite(greenLED,HIGH);
+        gpsWatchdog = millis();
+        gpsPacketCount = gps.charsProcessed();
+      }
+    }
   }
 
-  if (millis() > 5000 && gps.charsProcessed() < 10)
-  {
-    Serial.println(F("No GPS detected: check wiring."));
-  }
 
 }
 
