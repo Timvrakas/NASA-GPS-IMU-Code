@@ -10,12 +10,13 @@ static const uint32_t cycleDelay = 1000;
 Adafruit_BNO055 bno = Adafruit_BNO055();
 TinyGPSPlus gps;
 
-int greenLED = 6;
-int redLED = 12;
+int IOLED = 6;
+int GPSLED = 12;
 int button = 8;
 int gpsReset = 11;
+boolean gpsConnected = false;
 
-int timer;
+uint32_t timer;
 int gpsWatchdog;
 int gpsPacketCount = 0;
 
@@ -26,21 +27,22 @@ void setup()
 
   Serial.println(F("USB-GPS-IMU Board v1"));
   Serial.println(F("USB hub with integrated GPS and Orientation Sensor."));
-  Serial.print(F("Using TinyGPS++ library v. ")); Serial.println(TinyGPSPlus::libraryVersion());
+  Serial.print(F("Using TinyGPS++ library v. "));
+  Serial.println(TinyGPSPlus::libraryVersion());
   Serial.println(F("by Tim Vrakas"));
   Serial.println();
 
   if (!bno.begin())
   {
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    Serial.print(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
     while (1);
   }
   delay(1000);
   int8_t temp = bno.getTemp();
-  Serial.print("Current Temperature: ");
+  Serial.print(F("Current Temperature: "));
   Serial.print(temp);
-  Serial.println(" C");
-  Serial.println("");
+  Serial.println(F(" C"));
+  Serial.println();
 
   bno.setExtCrystalUse(true);
   timer = millis();
@@ -48,10 +50,10 @@ void setup()
 
 
   Serial.println("Calibration status values: 0=uncalibrated, 3=fully calibrated");
-  pinMode(greenLED, OUTPUT);
-  pinMode(redLED, OUTPUT);
-  digitalWrite(redLED, HIGH);
-  digitalWrite(greenLED, HIGH);
+  pinMode(IOLED, OUTPUT);
+  pinMode(GPSLED, OUTPUT);
+  digitalWrite(GPSLED, HIGH);
+  digitalWrite(IOLED, HIGH);
 
 }
 
@@ -60,61 +62,47 @@ void loop()
   while (Serial1.available() > 0)
     gps.encode(Serial1.read());
 
-  if (!digitalRead(button)) {
-    while (true) {
-      Serial1.write("$PSRF117,16*0B\r\n");
-      Serial.println("GPS is Shutdown...");
-      digitalWrite(redLED, HIGH);
-      digitalWrite(greenLED, LOW);
-      delay(100);
-      digitalWrite(redLED, LOW);
-      digitalWrite(greenLED, HIGH);
-      delay(100);
-    }
-  }
-
-  if (gps.location.isUpdated() || (millis() - timer > cycleDelay)) {
-    digitalWrite(greenLED, HIGH);
-    timer = millis();
+  if (millis() - timer > cycleDelay) {
+    digitalWrite(IOLED, HIGH);
+    timer = millis(); 
     displayGPS();
     displayIMU();
     Serial.println();
-    digitalWrite(greenLED, LOW);
+    digitalWrite(IOLED, LOW);
 
     if (millis() - gpsWatchdog > 5000) {
       if (gps.charsProcessed() - gpsPacketCount < 10) {
-        Serial.println(F("No GPS detected: check wiring."));
-        digitalWrite(redLED,LOW);
+        Serial.println(F("No GPS detected"));
+        digitalWrite(GPSLED, LOW);
+        gpsConnected = false;
       } else {
-        digitalWrite(greenLED,HIGH);
+        digitalWrite(GPSLED, HIGH);
+        gpsConnected = true;
         gpsWatchdog = millis();
         gpsPacketCount = gps.charsProcessed();
       }
     }
   }
-
-
 }
 
 void displayIMU() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  Serial.print(";");
   Serial.print(euler.x());
-  Serial.print(";");
+  Serial.print(F(";"));
   Serial.print(euler.y());
-  Serial.print(";");
+  Serial.print(F(";"));
   Serial.print(euler.z());
+  Serial.print(F(";"));
 
   uint8_t system, gyro, accel, mag = 0;
   bno.getCalibration(&system, &gyro, &accel, &mag);
-  Serial.print("  Calibration:");
-  Serial.print(" Sys=");
+  Serial.print(F("S:"));
   Serial.print(system, DEC);
-  Serial.print(" Gyro=");
+  Serial.print(F(";G:"));
   Serial.print(gyro, DEC);
-  Serial.print(" Accel=");
+  Serial.print(F(";A:"));
   Serial.print(accel, DEC);
-  Serial.print(" Mag=");
+  Serial.print(F(";M:"));
   Serial.print(mag, DEC);
 }
 
@@ -130,8 +118,7 @@ void displayGPS()
   }
   else
   {
-    Serial.print(F("INVALID;"));
-    Serial.print(F("INVALID;"));
+    Serial.print(F("X;X;"));
   }
 
   if (gps.date.isValid())
@@ -144,7 +131,7 @@ void displayGPS()
   }
   else
   {
-    Serial.print(F("INVALID;"));
+    Serial.print(F("X"));
   }
 
   Serial.print(F(";"));
@@ -165,6 +152,7 @@ void displayGPS()
   }
   else
   {
-    Serial.print(F("INVALID;"));
+    Serial.print(F("X"));
   }
+  Serial.print(F(";"));
 }
