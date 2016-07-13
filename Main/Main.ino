@@ -34,9 +34,11 @@ void setup()
 
   if (!bno.begin())
   {
-    Serial.print(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
-    while (1);
+    while (1) {
+      Serial.print(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
+    }
   }
+
   delay(1000);
   int8_t temp = bno.getTemp();
   Serial.print(F("Current Temperature: "));
@@ -47,7 +49,6 @@ void setup()
   bno.setExtCrystalUse(true);
   timer = millis();
   gpsWatchdog = millis();
-
 
   Serial.println("Calibration status values: 0=uncalibrated, 3=fully calibrated");
   pinMode(IOLED, OUTPUT);
@@ -64,7 +65,7 @@ void loop()
 
   if (millis() - timer > cycleDelay) {
     digitalWrite(IOLED, HIGH);
-    timer = millis(); 
+    timer = millis();
     displayGPS();
     displayIMU();
     Serial.println();
