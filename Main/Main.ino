@@ -109,7 +109,7 @@ void displayIMU() {
 
 void displayGPS()
 {
-  boolean valid = TRUE;
+  boolean valid = true;
   if (gps.location.isValid())
   {
 
