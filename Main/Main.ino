@@ -183,7 +183,7 @@ void displayGPS()
     valid = false;
   }
 
-  if (valid && gps.hdop.value() <= 5)
+  if (valid && gps.hdop.value() <= 500)
     Serial.print(F("TRUE;"));
   else
     Serial.print(F("FALSE;"));
