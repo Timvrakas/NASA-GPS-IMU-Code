@@ -4,7 +4,7 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 
-static const uint32_t GPSBaud = 4800;
+static const uint32_t GPSBaud = 9600;
 static const uint32_t cycleDelay = 1000;
 
 Adafruit_BNO055 bno = Adafruit_BNO055();
@@ -109,6 +109,7 @@ void displayIMU() {
 
 void displayGPS()
 {
+  boolean valid = TRUE;
   if (gps.location.isValid())
   {
 
@@ -120,6 +121,29 @@ void displayGPS()
   else
   {
     Serial.print(F("X;X;"));
+    valid = false;
+  }
+
+  if (gps.altitude.isValid())
+  {
+    Serial.print(gps.altitude.meters(), 6);
+    Serial.print(F(";"));
+  }
+  else
+  {
+    Serial.print(F("X;"));
+    valid = false;
+  }
+
+  if (gps.hdop.isValid())
+  {
+    Serial.print(gps.hdop.value(), 6);
+    Serial.print(F(";"));
+  }
+  else
+  {
+    Serial.print(F("X;"));
+    valid = false;
   }
 
   if (gps.date.isValid())
@@ -133,6 +157,7 @@ void displayGPS()
   else
   {
     Serial.print(F("X"));
+    valid = false;
   }
 
   Serial.print(F(";"));
@@ -150,10 +175,16 @@ void displayGPS()
     Serial.print(F("."));
     if (gps.time.centisecond() < 10) Serial.print(F("0"));
     Serial.print(gps.time.centisecond());
+    Serial.print(F(";"));
   }
   else
   {
-    Serial.print(F("X"));
+    Serial.print(F("X;"));
+    valid = false;
   }
-  Serial.print(F(";"));
+
+  if (valid && gps.hdop.value() <= 5)
+    Serial.print(F("TRUE;"));
+  else
+    Serial.print(F("FALSE;"));
 }
