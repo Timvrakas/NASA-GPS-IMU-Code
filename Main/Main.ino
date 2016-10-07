@@ -35,7 +35,7 @@ void setup()
   if (!bno.begin())
   {
     while (1) {
-      Serial.print(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
+      Serial.println(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
     }
   }
 
@@ -183,8 +183,9 @@ void displayGPS()
     valid = false;
   }
 
-  if (valid && gps.hdop.value() <= 500)
+  if (valid && gps.hdop.value() <= 500){
     Serial.print(F("TRUE;"));
-  else
+  }else{
     Serial.print(F("FALSE;"));
-}
+    digitalWrite(GPSLED,!digitalRead(GPSLED));
+  }}
