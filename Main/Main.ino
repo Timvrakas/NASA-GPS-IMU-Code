@@ -40,12 +40,11 @@ void setup()
     }
   }
 
-  delay(1000);
-  int8_t temp = bno.getTemp();
-  Serial.print(F("Current Temperature: "));
-  Serial.print(temp);
-  Serial.println(F(" C"));
-  Serial.println();
+  Serial.println("Loading Calibration From EEPROM...");
+  adafruit_bno055_offsets_t calibrationData;
+  EEPROM.get(0, calibrationData);
+  bno.setSensorOffsets(calibrationData);
+  Serial.println("Calibration Loaded!");
 
   bno.setExtCrystalUse(true);
   timer = millis();
@@ -55,6 +54,7 @@ void setup()
   pinMode(GPSLED, OUTPUT);
   digitalWrite(GPSLED, HIGH);
   digitalWrite(IOLED, HIGH);
+
 
 }
 
@@ -73,7 +73,7 @@ void loop()
     JsonObject& root = jsonBuffer.createObject();
 
     root["GPS_alive"] = gpsConnected;
-  
+
     processGPS(root);
     processIMU(root);
 
