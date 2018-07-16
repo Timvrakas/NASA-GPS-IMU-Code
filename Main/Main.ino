@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <TinyGPS++.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -25,8 +26,8 @@ void setup()
   Serial.begin(115200);
   Serial1.begin(GPSBaud);
 
-  Serial.println(F("USB-GPS-IMU Board v1"));
-  Serial.println(F("USB hub with integrated GPS and Orientation Sensor."));
+  Serial.println(F("USB-GPS-IMU Board v1.1"));
+  Serial.println(F("Integrated GPS and Orientation Sensor."));
   Serial.print(F("Using TinyGPS++ library v. "));
   Serial.println(TinyGPSPlus::libraryVersion());
   Serial.println(F("by Tim Vrakas"));
@@ -50,7 +51,6 @@ void setup()
   timer = millis();
   gpsWatchdog = millis();
 
-  Serial.println("Calibration status values: 0=uncalibrated, 3=fully calibrated");
   pinMode(IOLED, OUTPUT);
   pinMode(GPSLED, OUTPUT);
   digitalWrite(GPSLED, HIGH);
@@ -60,18 +60,29 @@ void setup()
 
 void loop()
 {
-  while (Serial1.available() > 0)
+  while (Serial1.available() > 0) //Process data from GPS module
     gps.encode(Serial1.read());
 
-  if (millis() - timer > cycleDelay) {
-    digitalWrite(IOLED, HIGH);
+  if (millis() - timer > cycleDelay) { //data print loop
     timer = millis();
-    displayGPS();
-    displayIMU();
-    Serial.println();
-    digitalWrite(IOLED, LOW);
 
-    if (millis() - gpsWatchdog > 5000) {
+    digitalWrite(IOLED, HIGH); //blinky
+
+    StaticJsonBuffer<255> jsonBuffer;
+
+    JsonObject& root = jsonBuffer.createObject();
+
+    root["GPS_alive"] = gpsConnected;
+  
+    processGPS(root);
+    processIMU(root);
+
+    root.printTo(Serial);
+    Serial.println();
+
+    digitalWrite(IOLED, LOW); //blinky
+
+    if (millis() - gpsWatchdog > 5000) { //GPS Connection Management
       if (gps.charsProcessed() - gpsPacketCount < 10) {
         Serial.println(F("No GPS detected"));
         digitalWrite(GPSLED, LOW);
@@ -86,106 +97,67 @@ void loop()
   }
 }
 
-void displayIMU() {
-  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  Serial.print(euler.x());
-  Serial.print(F(";"));
-  Serial.print(euler.y());
-  Serial.print(F(";"));
-  Serial.print(euler.z());
-  Serial.print(F(";"));
+void processIMU(JsonObject& root) {
 
+  //IMU Temperature Sensor
+  root["temp"] = bno.getTemp();
+
+  //Euler Vector
+  imu::Vector<3> imuEuler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  JsonObject& euler = root.createNestedObject("euler");
+  euler["x"] = imuEuler.x();
+  euler["y"] = imuEuler.y();
+  euler["z"] = imuEuler.z();
+
+  // Quaternion
+  imu::Quaternion imuQuat = bno.getQuat();
+  JsonObject& quat = root.createNestedObject("quat");
+  quat["qW"] = imuQuat.w();
+  quat["qY"] = imuQuat.y();
+  quat["qX"] = imuQuat.x();
+  quat["qZ"] = imuQuat.z();
+
+  // IMU Calibratio Status
   uint8_t system, gyro, accel, mag = 0;
   bno.getCalibration(&system, &gyro, &accel, &mag);
-  Serial.print(F("S:"));
-  Serial.print(system, DEC);
-  Serial.print(F(";G:"));
-  Serial.print(gyro, DEC);
-  Serial.print(F(";A:"));
-  Serial.print(accel, DEC);
-  Serial.print(F(";M:"));
-  Serial.print(mag, DEC);
+  JsonObject& calStatus = root.createNestedObject("imu_cal");
+  calStatus["system"] = system;
+  calStatus["gyro"] = gyro;
+  calStatus["accel"] = accel;
+  calStatus["mag"] = mag;
+
+  uint8_t system_status, self_test_result, system_error = 0;
+  bno.getSystemStatus(&system_status, &self_test_result, &system_error);
+  JsonObject& imuStatus = root.createNestedObject("imu_status");
+  imuStatus["system"] = system_status;
+  imuStatus["self_test"] = self_test_result;
+  imuStatus["error"] = system_error;
+
 }
 
-void displayGPS()
+void processGPS(JsonObject& root)
 {
-  boolean valid = true;
-  if (gps.location.isValid())
-  {
 
-    Serial.print(gps.location.lat(), 6);
-    Serial.print(F(";"));
-    Serial.print(gps.location.lng(), 6);
-    Serial.print(F(";"));
-  }
-  else
-  {
-    Serial.print(F("X;X;"));
-    valid = false;
-  }
+  JsonObject& gpsData = root.createNestedObject("gps");
+  gpsData["lat"] = gps.location.lat();
+  gpsData["lon"] = gps.location.lng();
+  gpsData["alt"] = gps.altitude.meters();
+  gpsData["hdop"] = gps.hdop.value();
 
-  if (gps.altitude.isValid())
-  {
-    Serial.print(gps.altitude.meters(), 6);
-    Serial.print(F(";"));
-  }
-  else
-  {
-    Serial.print(F("X;"));
-    valid = false;
-  }
+  JsonObject& date = gpsData.createNestedObject("date");
+  date["year"] = gps.date.year();
+  date["month"] = gps.date.month();
+  date["day"] = gps.date.day();
+  date["hour"] = gps.time.hour();
+  date["min"] = gps.time.minute();
+  date["sec"] = gps.time.second();
+  date["centisec"] = gps.time.centisecond();
 
-  if (gps.hdop.isValid())
-  {
-    Serial.print(gps.hdop.value(), 6);
-    Serial.print(F(";"));
-  }
-  else
-  {
-    Serial.print(F("X;"));
-    valid = false;
-  }
-
-  if (gps.date.isValid())
-  {
-    Serial.print(gps.date.month());
-    Serial.print(F("/"));
-    Serial.print(gps.date.day());
-    Serial.print(F("/"));
-    Serial.print(gps.date.year());
-  }
-  else
-  {
-    Serial.print(F("X"));
-    valid = false;
-  }
-
-  Serial.print(F(";"));
-
-  if (gps.time.isValid())
-  {
-    if (gps.time.hour() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.hour());
-    Serial.print(F(":"));
-    if (gps.time.minute() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.minute());
-    Serial.print(F(":"));
-    if (gps.time.second() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.second());
-    Serial.print(F("."));
-    if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.centisecond());
-    Serial.print(F(";"));
-  }
-  else
-  {
-    Serial.print(F("X;"));
-    valid = false;
-  }
-
-  if (valid && gps.hdop.value() <= 500){
+  if (gps.location.isValid() && gps.hdop.value() <= 500) {
     Serial.print(F("TRUE;"));
-  }else{
+  } else {
     Serial.print(F("FALSE;"));
-    digitalWrite(GPSLED,!digitalRead(GPSLED));
-  }}
+    digitalWrite(GPSLED, !digitalRead(GPSLED));
+  }
+
+}
