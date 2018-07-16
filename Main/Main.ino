@@ -40,13 +40,6 @@ void setup()
     }
   }
 
-  delay(1000);
-  int8_t temp = bno.getTemp();
-  Serial.print(F("Current Temperature: "));
-  Serial.print(temp);
-  Serial.println(F(" C"));
-  Serial.println();
-
   bno.setExtCrystalUse(true);
   timer = millis();
   gpsWatchdog = millis();
@@ -55,7 +48,6 @@ void setup()
   pinMode(GPSLED, OUTPUT);
   digitalWrite(GPSLED, HIGH);
   digitalWrite(IOLED, HIGH);
-
 }
 
 void loop()
@@ -73,7 +65,7 @@ void loop()
     JsonObject& root = jsonBuffer.createObject();
 
     root["GPS_alive"] = gpsConnected;
-  
+
     processGPS(root);
     processIMU(root);
 
@@ -98,7 +90,6 @@ void loop()
 }
 
 void processIMU(JsonObject& root) {
-
   //IMU Temperature Sensor
   root["temp"] = bno.getTemp();
 
@@ -132,12 +123,10 @@ void processIMU(JsonObject& root) {
   imuStatus["system"] = system_status;
   imuStatus["self_test"] = self_test_result;
   imuStatus["error"] = system_error;
-
 }
 
 void processGPS(JsonObject& root)
 {
-
   JsonObject& gpsData = root.createNestedObject("gps");
   gpsData["lat"] = gps.location.lat();
   gpsData["lon"] = gps.location.lng();
@@ -159,5 +148,4 @@ void processGPS(JsonObject& root)
     Serial.print(F("FALSE;"));
     digitalWrite(GPSLED, !digitalRead(GPSLED));
   }
-
 }
