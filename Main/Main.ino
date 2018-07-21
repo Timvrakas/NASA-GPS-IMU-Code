@@ -60,7 +60,7 @@ void loop()
 
     digitalWrite(IOLED, HIGH); //blinky
 
-    StaticJsonBuffer<255> jsonBuffer;
+    StaticJsonBuffer<512> jsonBuffer;
 
     JsonObject& root = jsonBuffer.createObject();
 
@@ -76,7 +76,6 @@ void loop()
 
     if (millis() - gpsWatchdog > 5000) { //GPS Connection Management
       if (gps.charsProcessed() - gpsPacketCount < 10) {
-        Serial.println(F("No GPS detected"));
         digitalWrite(GPSLED, LOW);
         gpsConnected = false;
       } else {
@@ -95,18 +94,18 @@ void processIMU(JsonObject& root) {
 
   //Euler Vector
   imu::Vector<3> imuEuler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  JsonObject& euler = root.createNestedObject("euler");
-  euler["x"] = imuEuler.x();
-  euler["y"] = imuEuler.y();
-  euler["z"] = imuEuler.z();
+  JsonArray& euler = root.createNestedArray("euler");
+  euler.add(imuEuler.x());
+  euler.add(imuEuler.y());
+  euler.add(imuEuler.z());
 
   // Quaternion
   imu::Quaternion imuQuat = bno.getQuat();
-  JsonObject& quat = root.createNestedObject("quat");
-  quat["qW"] = imuQuat.w();
-  quat["qY"] = imuQuat.y();
-  quat["qX"] = imuQuat.x();
-  quat["qZ"] = imuQuat.z();
+  JsonArray& quat = root.createNestedArray("quat");
+  quat.add(imuQuat.w());
+  quat.add(imuQuat.x());
+  quat.add(imuQuat.y());
+  quat.add(imuQuat.z());
 
   // IMU Calibratio Status
   uint8_t system, gyro, accel, mag = 0;
@@ -142,10 +141,11 @@ void processGPS(JsonObject& root)
   date["sec"] = gps.time.second();
   date["centisec"] = gps.time.centisecond();
 
-  if (gps.location.isValid() && gps.hdop.value() <= 500) {
-    Serial.print(F("TRUE;"));
+  bool gpsLock = (gps.location.isValid() && gps.hdop.value() <= 500);
+  if(gpsLock){
+    digitalWrite(GPSLED, HIGH);
   } else {
-    Serial.print(F("FALSE;"));
     digitalWrite(GPSLED, !digitalRead(GPSLED));
   }
+  gpsData["lock"] = gpsLock;
 }
