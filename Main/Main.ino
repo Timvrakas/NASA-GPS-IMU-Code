@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <TinyGPS++.h>
 #include <Wire.h>
@@ -39,7 +40,13 @@ void setup()
       Serial.println(F("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!"));
     }
   }
-
+  
+  Serial.println("Loading Calibration From EEPROM...");
+  adafruit_bno055_offsets_t calibrationData;
+  EEPROM.get(0, calibrationData);
+  bno.setSensorOffsets(calibrationData);
+  Serial.println("Calibration Loaded!");
+  
   bno.setExtCrystalUse(true);
   timer = millis();
   gpsWatchdog = millis();
