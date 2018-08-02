@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
@@ -75,7 +76,7 @@ void loop()
     Serial.print(" M:");
     Serial.print(mag, DEC);
 
-    if (Serial.read() = 'S') { //Save Cal Data
+    if (Serial.read() == 'S') { //Save Cal Data
       if (bno.isFullyCalibrated()) {
         Serial.println("Saving Calibration...");
         adafruit_bno055_offsets_t newCalib;

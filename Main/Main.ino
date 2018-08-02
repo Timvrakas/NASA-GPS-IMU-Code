@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <TinyGPS++.h>
 #include <Wire.h>
